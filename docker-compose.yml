@@ -1,0 +1,59 @@
+# Full stack: MongoDB + Neo4j + API + web.
+# The LLM runs on the host (Ollama uses the Mac GPU there) and is reached via
+# host.docker.internal; or point OPENAI_BASE_URL / ANTHROPIC_API_KEY elsewhere.
+#
+#   cp .env.example .env   # set NEO4J_PASSWORD
+#   docker compose up -d
+#   docker compose run --rm api insaaf init-db
+#   docker compose run --rm api insaaf run --court bombay --from 2023 --to 2023 --limit 50
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes: [mongo-data:/data/db]
+    ports: ["127.0.0.1:27017:27017"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      retries: 5
+
+  neo4j:
+    image: neo4j:5.26-community
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+      NEO4J_server_memory_heap_max__size: 2G
+      NEO4J_server_memory_pagecache_size: 1G
+    volumes: [neo4j-data:/data]
+    ports: ["127.0.0.1:7474:7474", "127.0.0.1:7687:7687"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      retries: 10
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      NEO4J_URI: bolt://neo4j:7687
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL_DOCKER:-http://host.docker.internal:11434/v1}
+      CORS_ORIGINS: '["http://localhost:8080"]'
+      LOG_JSON: "true"
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on:
+      mongo: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+    ports: ["127.0.0.1:8000:8000"]
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["127.0.0.1:8080:80"]
+
+volumes:
+  mongo-data:
+  neo4j-data:

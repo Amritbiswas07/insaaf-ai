@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "insaaf"
+version = "2.0.0"
+description = "Insaaf AI — agentic GraphRAG legal research assistant over Indian case law"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.40",
+    "beautifulsoup4>=4.12",
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "lxml>=5.2",
+    "neo4j>=5.24",
+    "openai>=1.50",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "pymongo>=4.10",
+    "rich>=13.7",
+    "structlog>=24.4",
+    "tenacity>=9.0",
+    "typer>=0.12",
+    "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[project.scripts]
+insaaf = "insaaf.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/insaaf"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
+ignore = ["E501"]
